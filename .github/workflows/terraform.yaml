@@ -38,18 +38,23 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-3
 
-      - name: Format
-        run: terraform fmt -check -recursive
-
       - name: Init
         run: terraform init -input=false
 
+      # Checks only on pull requests, already done before the merge
+      - name: Format
+        if: github.event_name == 'pull_request'
+        run: terraform fmt -check -recursive
+
       - name: Validate
+        if: github.event_name == 'pull_request'
         run: terraform validate
 
       - name: Plan
-        run: terraform plan -input=false -lock-timeout=5m -out=tfplan
+        if: github.event_name == 'pull_request'
+        run: terraform plan -input=false -lock-timeout=5m
 
+      # Deploy on merge to main
       - name: Apply
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: terraform apply -input=false -auto-approve tfplan
+        run: terraform apply -input=false -auto-approve -lock-timeout=5m
