@@ -1,4 +1,5 @@
 # Plan on pull requests, apply on merge to main
+# Ne tourne que sur les stacks modifiées (voir le job "changes")
 name: terraform
 
 on:
@@ -14,14 +15,63 @@ concurrency:
   cancel-in-progress: false # never kill a running apply
 
 jobs:
+  # Détecte quelles stacks (dossiers aws/<projet>) ont changé
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      stacks: ${{ steps.detect.outputs.stacks }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # tout l'historique, pour pouvoir faire le git diff
+
+      - id: detect
+        env:
+          # Commit de référence : la branche cible pour une PR, le commit d'avant pour un push
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          # Toutes les stacks = dossiers dans aws/, sauf les modules
+          ALL=$(find aws -mindepth 1 -maxdepth 1 -type d ! -name aws.modules | sort)
+
+          if ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            # Pas de commit de référence (cas rare) : on prend tout par sécurité
+            STACKS="$ALL"
+          else
+            CHANGED=$(git diff --name-only "$BASE" "$GITHUB_SHA")
+            echo "Fichiers modifiés :"; echo "$CHANGED"
+
+            if echo "$CHANGED" | grep -q '^\.github/workflows/terraform\.yaml$'; then
+              # La pipeline elle-même a changé : on teste tout
+              STACKS="$ALL"
+            else
+              # Modules modifiés (ex : s3-bucket)
+              MODULES=$(echo "$CHANGED" | sed -n 's#^aws/aws\.modules/\([^/]*\)/.*#\1#p' | sort -u)
+              STACKS=$(for s in $ALL; do
+                # La stack a un fichier modifié
+                if echo "$CHANGED" | grep -q "^$s/"; then echo "$s"; continue; fi
+                # Ou elle appelle un module modifié
+                for m in $MODULES; do
+                  if grep -rqs "aws.modules/$m\"" "$s"; then echo "$s"; break; fi
+                done
+              done)
+            fi
+          fi
+
+          # Format JSON attendu par la matrix, ex : ["aws/pgkube-guard"]
+          JSON=$(printf '%s\n' $STACKS | jq -R . | jq -sc 'map(select(length > 0))')
+          echo "Stacks à traiter : $JSON"
+          echo "stacks=$JSON" >> "$GITHUB_OUTPUT"
+
   terraform:
     name: ${{ matrix.stack }}
+    needs: changes
+    if: needs.changes.outputs.stacks != '[]' # aucune stack modifiée : on ne lance rien
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        stack:
-          - aws/pgkube-guard
+        # Un job par stack modifiée
+        stack: ${{ fromJSON(needs.changes.outputs.stacks) }}
     defaults:
       run:
         working-directory: ${{ matrix.stack }}
