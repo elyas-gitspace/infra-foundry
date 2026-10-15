@@ -4,6 +4,7 @@ Personal cloud infrastructure, managed with Terraform.
 
 | Stack | Provider | What it creates |
 |---|---|---|
+| [`aws/cloud-portofolio`](aws/cloud-portofolio) | AWS | Bucket S3 privé + CloudFront (OAC) pour le site CV |
 | [`aws/pgkube-guard`](aws/pgkube-guard) | AWS | S3 bucket and IAM users to test [pgkube-guard](https://github.com/elyas-gitspace/pgkube-guard) |
 
 ## Structure
@@ -12,7 +13,9 @@ Personal cloud infrastructure, managed with Terraform.
 aws/
 ├── aws.modules/       # Briques réutilisables (aucun state, appelées par les stacks)
 │   ├── s3-bucket/     # Bucket S3 privé, chiffré, sans accès public
-│   └── iam-user/      # User IAM technique + policy inline + access key
+│   ├── iam-user/      # User IAM technique + policy inline + access key
+│   └── cloudfront-s3/ # Distribution CloudFront devant un bucket S3 (OAC)
+├── cloud-portofolio/  # Stack du site CV
 └── pgkube-guard/      # Stack d'un projet : appelle les modules, a son propre state
 ```
 
