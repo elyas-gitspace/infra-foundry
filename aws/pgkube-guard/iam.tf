@@ -1,13 +1,16 @@
 locals {
-  prefix_arn = "${aws_s3_bucket.backups.arn}/${var.prefix}*"
+  # ARN de tous les objets sous le préfixe pgkube-guard (ex : arn:aws:s3:::bucket/pgkube-guard/*)
+  prefix_arn = "${module.backups_bucket.arn}/${var.prefix}*"
 }
 
-# Backup job: list, write and delete dumps (retention) under the prefix only
+# ---------- Permissions ----------
+
+# Job de backup : lister, écrire et supprimer les dumps (rétention), uniquement sous le préfixe
 data "aws_iam_policy_document" "backup" {
   statement {
     sid       = "ListPrefix"
     actions   = ["s3:ListBucket"]
-    resources = [aws_s3_bucket.backups.arn]
+    resources = [module.backups_bucket.arn]
     condition {
       test     = "StringLike"
       variable = "s3:prefix"
@@ -21,12 +24,12 @@ data "aws_iam_policy_document" "backup" {
   }
 }
 
-# Restore test: list and read dumps under the prefix only
+# Test de restore : lister et lire les dumps, uniquement sous le préfixe (lecture seule)
 data "aws_iam_policy_document" "restore" {
   statement {
     sid       = "ListPrefix"
     actions   = ["s3:ListBucket"]
-    resources = [aws_s3_bucket.backups.arn]
+    resources = [module.backups_bucket.arn]
     condition {
       test     = "StringLike"
       variable = "s3:prefix"
@@ -40,33 +43,25 @@ data "aws_iam_policy_document" "restore" {
   }
 }
 
-resource "aws_iam_user" "backup" {
-  name = "pgkube-guard-backup"
-  path = "/pgkube-guard/"
+# Utilisateurs IAM
+# Leurs access keys vont dans les Secrets Kubernetes de pgkube-guard
+
+# User utilisé par le CronJob de backup
+module "backup_user" {
+  source = "../aws.modules/iam-user"
+
+  name        = "pgkube-guard-backup"
+  path        = "/pgkube-guard/"
+  policy_name = "pgkube-guard-backup-s3"
+  policy_json = data.aws_iam_policy_document.backup.json
 }
 
-resource "aws_iam_user" "restore" {
-  name = "pgkube-guard-restore"
-  path = "/pgkube-guard/"
-}
+# User utilisé par le test de restore
+module "restore_user" {
+  source = "../aws.modules/iam-user"
 
-resource "aws_iam_user_policy" "backup" {
-  name   = "pgkube-guard-backup-s3"
-  user   = aws_iam_user.backup.name
-  policy = data.aws_iam_policy_document.backup.json
-}
-
-resource "aws_iam_user_policy" "restore" {
-  name   = "pgkube-guard-restore-s3"
-  user   = aws_iam_user.restore.name
-  policy = data.aws_iam_policy_document.restore.json
-}
-
-# Access keys used in the pgkube-guard Kubernetes Secrets (stored in the state, keep it out of git)
-resource "aws_iam_access_key" "backup" {
-  user = aws_iam_user.backup.name
-}
-
-resource "aws_iam_access_key" "restore" {
-  user = aws_iam_user.restore.name
+  name        = "pgkube-guard-restore"
+  path        = "/pgkube-guard/"
+  policy_name = "pgkube-guard-restore-s3"
+  policy_json = data.aws_iam_policy_document.restore.json
 }
