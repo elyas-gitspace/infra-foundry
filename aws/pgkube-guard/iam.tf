@@ -43,7 +43,7 @@ data "aws_iam_policy_document" "restore" {
   }
 }
 
-# ---------- Utilisateurs IAM ----------
+# Utilisateurs IAM
 # Leurs access keys vont dans les Secrets Kubernetes de pgkube-guard
 
 # User utilisé par le CronJob de backup
