@@ -1,6 +1,8 @@
+# Valeurs à reporter dans la config / les Secrets Kubernetes de pgkube-guard
+
 output "bucket_name" {
   description = "S3_BUCKET value for pgkube-guard"
-  value       = aws_s3_bucket.backups.bucket
+  value       = module.backups_bucket.id
 }
 
 output "region" {
@@ -15,22 +17,22 @@ output "prefix" {
 
 output "backup_access_key_id" {
   description = "AWS_ACCESS_KEY_ID of the s3-backup-credentials Secret"
-  value       = aws_iam_access_key.backup.id
+  value       = module.backup_user.access_key_id
 }
 
 output "backup_secret_access_key" {
   description = "AWS_SECRET_ACCESS_KEY of the s3-backup-credentials Secret"
-  value       = aws_iam_access_key.backup.secret
+  value       = module.backup_user.secret_access_key
   sensitive   = true
 }
 
 output "restore_access_key_id" {
   description = "AWS_ACCESS_KEY_ID of the s3-restore-credentials Secret"
-  value       = aws_iam_access_key.restore.id
+  value       = module.restore_user.access_key_id
 }
 
 output "restore_secret_access_key" {
   description = "AWS_SECRET_ACCESS_KEY of the s3-restore-credentials Secret"
-  value       = aws_iam_access_key.restore.secret
+  value       = module.restore_user.secret_access_key
   sensitive   = true
 }
