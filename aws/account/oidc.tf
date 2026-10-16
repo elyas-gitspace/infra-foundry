@@ -8,12 +8,3 @@ resource "aws_iam_openid_connect_provider" "github" {
   # Pas de thumbprint : AWS vérifie lui-même le certificat de GitHub
 }
 
-# Le fournisseur existait déjà dans le compte (créé à la main lors d'anciens tests).
-# Ce bloc dit à Terraform : "ne le crée pas, prends le contrôle de celui qui existe".
-# Une fois l'apply passé, ce bloc ne sert plus à rien : tu peux le supprimer.
-data "aws_caller_identity" "current" {}
-
-import {
-  to = aws_iam_openid_connect_provider.github
-  id = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
-}
