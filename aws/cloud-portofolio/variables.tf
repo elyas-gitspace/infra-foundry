@@ -9,3 +9,9 @@ variable "bucket_name" {
   type        = string
   default     = "cloud-portofolio-site-elyas"
 }
+
+variable "github_repo" {
+  description = "Repo GitHub du site, autorisé à déployer (owner/repo)"
+  type        = string
+  default     = "elyas-gitspace/cloud-portofolio"
+}

@@ -14,3 +14,8 @@ output "site_url" {
   description = "URL publique du site"
   value       = "https://${module.site_cdn.domain_name}"
 }
+
+output "ci_role_arn" {
+  description = "ARN du rôle à mettre dans le workflow GitHub du site (role-to-assume)"
+  value       = module.ci_role.arn
+}
