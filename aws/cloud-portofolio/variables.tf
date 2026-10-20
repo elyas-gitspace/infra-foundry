@@ -11,7 +11,7 @@ variable "bucket_name" {
 }
 
 variable "github_repo" {
-  description = "Repo GitHub du site, autorisé à déployer (owner/repo)"
+  description = "Repo GitHub du site, autorisé à déployer (owner@id/repo@id, format du sub OIDC GitHub)"
   type        = string
-  default     = "elyas-gitspace/cloud-portofolio"
+  default     = "elyas-gitspace@230582305/cloud-portofolio@1420671260"
 }
