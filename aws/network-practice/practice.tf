@@ -1,6 +1,8 @@
 # =============================================================================
-# Exo 1 - Etape 1 : VPC + subnet + EC2 avec IP publique, SANS Internet Gateway
-# Résultat attendu : le SSH vers l'EC2 doit TIMEOUT.
+# Exo 1 : C'est quoi un subnet public en vrai ?
+# Etape 1 : VPC + subnet + EC2 avec IP publique         => SSH timeout
+# Etape 2 : + Internet Gateway                           => SSH timeout
+# Etape 3 : + route table 0.0.0.0/0 -> IGW sur le subnet => SSH OK
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -130,6 +132,43 @@ resource "aws_instance" "web" {
   associate_public_ip_address = true
 
   tags = { Name = "lab-web" }
+}
+
+# -----------------------------------------------------------------------------
+# Etape 2 - Internet Gateway : la porte entre le VPC et Internet.
+# Elle traduit aussi IP publique <-> IP privée de l'EC2 dans les deux sens.
+# Gratuite, managée par AWS, une seule par VPC.
+# -----------------------------------------------------------------------------
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.lab.id # on "accroche" la porte à notre VPC
+
+  tags = { Name = "lab-igw" }
+}
+
+# -----------------------------------------------------------------------------
+# Etape 3 - Route table : les panneaux de direction du subnet.
+# AWS y met toujours une route "10.0.0.0/16 -> local" (le trafic interne au VPC),
+# on n'a pas besoin de l'écrire.
+# -----------------------------------------------------------------------------
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.lab.id
+
+  # "Tout ce qui n'est pas dans le VPC, envoie-le à l'IGW"
+  # 0.0.0.0/0 = n'importe quelle adresse (la route la plus large, utilisée en dernier recours)
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+
+  tags = { Name = "lab-public-rt" }
+}
+
+# Branche la route table sur le subnet.
+# Sans ça, le subnet continue d'utiliser la "main route table" du VPC (juste la route local).
+# C'est CETTE association qui rend le subnet public.
+resource "aws_route_table_association" "public" {
+  subnet_id      = aws_subnet.public.id
+  route_table_id = aws_route_table.public.id
 }
 
 # -----------------------------------------------------------------------------
