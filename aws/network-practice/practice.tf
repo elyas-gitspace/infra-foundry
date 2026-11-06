@@ -23,10 +23,12 @@ variable "my_ip" {
   description = "Ton IP publique en /32, seule IP autorisée en SSH"
 }
 
-# Chemin vers ta clé SSH PUBLIQUE (le .pub), envoyée à AWS pour le SSH
-variable "ssh_public_key_path" {
-  type    = string
-  default = "~/.ssh/id_ed25519.pub"
+# Contenu de ta clé SSH PUBLIQUE (la ligne "ssh-ed25519 AAAA..." du fichier .pub).
+# On passe le contenu et pas un chemin, car le fichier n'existe pas sur le runner de la CI.
+# En local : dans terraform.tfvars. En CI : secret GitHub SSH_PUBLIC_KEY.
+variable "ssh_public_key" {
+  type        = string
+  description = "Contenu de la clé SSH publique installée dans l'EC2"
 }
 
 # -----------------------------------------------------------------------------
@@ -95,7 +97,7 @@ resource "aws_security_group" "ssh" {
 # -----------------------------------------------------------------------------
 resource "aws_key_pair" "lab" {
   key_name   = "lab-key"
-  public_key = file(pathexpand(var.ssh_public_key_path)) # pathexpand gère le "~"
+  public_key = var.ssh_public_key
 }
 
 # -----------------------------------------------------------------------------
