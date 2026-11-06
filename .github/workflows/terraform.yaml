@@ -31,8 +31,7 @@ jobs:
           BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: |
           # Toutes les stacks = dossiers dans aws/, sauf les modules
-          # et network-practice (lab perso : apply/destroy à la main en local, jamais en CI)
-          ALL=$(find aws -mindepth 1 -maxdepth 1 -type d ! -name aws.modules ! -name network-practice | sort)
+          ALL=$(find aws -mindepth 1 -maxdepth 1 -type d ! -name aws.modules | sort)
 
           if ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
             # Pas de commit de référence (cas rare) : on prend tout par sécurité
@@ -79,6 +78,11 @@ jobs:
     defaults:
       run:
         working-directory: ${{ matrix.stack }}
+    # Variables Terraform lues depuis les secrets GitHub (TF_VAR_<nom> = variable "<nom>")
+    # Ignorées par les stacks qui ne déclarent pas ces variables
+    env:
+      TF_VAR_my_ip: ${{ secrets.MY_IP }}
+      TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
     steps:
       - uses: actions/checkout@v4
 
